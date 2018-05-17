@@ -26,6 +26,8 @@ class Actor {
     this.pos = pos;
     this.size = size;
     this.speed = speed;
+
+    // Свойства нужно задать как свойства класса, так же как type
     Object.defineProperty(this, 'left', {
       get: () => {
         return this.pos.x;
@@ -57,11 +59,15 @@ class Actor {
   }
 
   isIntersect(actor) {
+    // почему такая проверка, а не как в остальных местах?
     if (!(Actor.prototype.isPrototypeOf(actor))) {
       throw new Error(`Аргумент isIntersect не является экземпляром Actor`);
     }
+
+    // лучше использовать оператор ===
     if (Object.is(this, actor))
       return false;
+    // здесь можно написать просто return <выражение в if>
     if ((this.right > actor.left && this.left < actor.right) && (this.bottom > actor.top && this.top < actor.bottom)) {
       return true;
     }
@@ -75,6 +81,8 @@ class Level {
     this.actors = actors;
     this.status = null;
     this.finishDelay = 1;
+
+    // для поиска объектов массиве лучше исползовать другой метод
     actors.some((val) => {
       if (val.type === 'player') {
         this.player = val;
@@ -83,10 +91,12 @@ class Level {
     });
   }
 
+  // это можно задать в конструкторе
   get height() {
     return this.grid.length;
   }
 
+  // это можно задать в конструкторе
   get width() {
     return this.grid.reduce((max, val) => {
       return max < val.length ? val.length : max;
@@ -94,13 +104,16 @@ class Level {
   }
 
   isFinished() {
+    // тренарный оператор здесь можно убрать
     return this.status !== null && this.finishDelay < 0 ? true : false;
   }
 
   actorAt(actor) {
+    // первая половина проверки лишняя
     if (!actor || !(actor instanceof Actor)) {
       throw new Error('Аргумент "actorAt" не является экземпляром Actor или не задан')
     }
+    // тут можно обойтись без фигурных скобок
     return this.actors.find((val) => {
       return actor.isIntersect(val);
     });
@@ -111,14 +124,21 @@ class Level {
       throw new Error('Аргумент "obstacleAt" не является экземпляром Vector')
     }
 
+    // можно не создавать целый объект, чтобы сложить 2 числа :)
     const testActor = new Actor(route, size); // нужен, чтобы пользоваться свойствами Actor
     if (testActor.left < 0 || testActor.right > this.width || testActor.top < 0)
       return 'wall';
+    // else не нужен, т.к. в if return
     else if (testActor.bottom > this.height)
       return 'lava';
+    // тут тоже
     else {
+      // округления лучше сохранить в переменных
+      // почему нет округления для верхних границ?
       for (let y = Math.floor(testActor.top); y < testActor.bottom; y++) {
         for (let x = Math.floor(testActor.left); x < testActor.right; x++) {
+          // this.grid[y][x] лучше сохранить в переменную, чтобы 2 раза не писать
+          // можно написать просто if (this.grid[y][x])
           if (this.grid[y][x] !== undefined) {
             return this.grid[y][x];
           }
@@ -128,19 +148,24 @@ class Level {
   }
 
   removeActor(actor) {
+    // у вас идёт обход всего массива даже если нужно элемент первый
+    // попробуйте сделать, чтобы после нахождения нужного элемента обход прекращался
     this.actors.forEach((val, i) => {
+      // не опускайте фигурные скобки
       if (actor === val)
         this.actors.splice(i, 1);
     });
   }
 
   noMoreActors(type) {
+    // можно обойтись без фигурных скобок
     return !(this.actors.some((val) => {
       return val.type === type;
     }));
   }
 
   playerTouched(type, actor) {
+    // не опускайте фигурные скобки
     if (this.status !== null)
       return;
     if (type === 'lava' || type === 'fireball') {
@@ -161,11 +186,12 @@ class LevelParser {
   }
 
   actorFromSymbol(sym) {
+    // цикл лишний, вернуть сзачение ключа по ключу можно намного проще
     for (let i in this.dict) {
       if (sym === i)
         return this.dict[i];
     }
-    return undefined;
+    return undefined; // лишняя строчка, функция и так возвращает undefined, елси не указано другое
   }
 
   obstacleFromSymbol(sym) {
@@ -174,11 +200,12 @@ class LevelParser {
     else if (sym === '!')
       return 'lava';
     else
-      return undefined;
+      return undefined; // лишняя строчка, функция и так возвращает undefined, елси не указано другое
   }
 
   createGrid(plan) {
     const grid = [];
+    // можно сделать с помощью двух вызовов map
     plan.forEach((val) => {
       let row = val.split('').map((key) => {
         return this.obstacleFromSymbol(key);
@@ -190,11 +217,13 @@ class LevelParser {
 
   createActors(plan) {
     const actors = [];
+    // лучше просто добавить в конструкторе значение  по-умолчанию, чтобы не проверять дальше по коду
     if (!this.dict)
       return actors;
     plan.forEach((val, y) => {
       val.split('').forEach((key, x) => {
         const constr = this.actorFromSymbol(key);
+        // проще создать объект и проверить его тип
         if (constr && (constr.prototype instanceof Actor || constr == Actor)) {
           actors.push(new constr(new Vector(x, y)));
         }
@@ -210,10 +239,12 @@ class LevelParser {
 
 class Fireball extends Actor {
   constructor(pos = new Vector(0, 0), speed = new Vector(0, 0)) {
+    // pos, speed, size должны задаваться через родительский конструктор
     super();
     this.pos = pos;
     this.speed = speed;
     this.size = new Vector(1, 1);
+    // зачем через defineProperty?
     Object.defineProperty(this, 'type', {
       get: function () {
         return 'fireball';
@@ -222,17 +253,21 @@ class Fireball extends Actor {
   }
 
   getNextPosition(time = 1) {
+    // тут нужно использовать методы класса Vector
     return new Vector(this.pos.x + this.speed.x * time, this.pos.y + this.speed.y * time);
   }
 
   handleObstacle() {
+    // не нужно мутировать объект Vector, нужно менять его с помощью методов
     this.speed.x *= -1;
     this.speed.y *= -1;
   }
 
   act(time, level) {
+    // значение переменной не меняется, лучше использовать const
     let obstacle = level.obstacleAt(this.getNextPosition(time), this.size);
     if (!obstacle) {
+      // дублирование getNextPosition
       this.pos.x = this.pos.x + this.speed.x * time;
       this.pos.y = this.pos.y + this.speed.y * time;
     } else {
@@ -244,7 +279,9 @@ class Fireball extends Actor {
 class HorizontalFireball extends Fireball {
   constructor(pos) {
     super(pos);
+    // pos, speed, size должны задаваться через родительский конструктор
     this.speed = new Vector(2, 0);
+    // не опускайте фигурные скобки
     if (pos)
       this.pos = pos;
   }
@@ -252,17 +289,22 @@ class HorizontalFireball extends Fireball {
 
 class VerticalFireball extends Fireball {
   constructor(pos) {
+    // pos, speed, size должны задаваться через родительский конструктор
     super(pos);
     this.speed = new Vector(0, 2);
+    // не опускайте фигурные скобки
     if (pos)
       this.pos = pos;
   }
 }
 
+// не работет - шар просто падает и лежит на препятствии, а должен возвращаться в начальное положение
 class FireRain extends Fireball {
   constructor(pos) {
+    // pos, speed, size должны задаваться через родительский конструктор
     super(pos);
     this.speed = new Vector(0, 3);
+    // не опускайте фигурные скобки
     if (pos)
       this.pos = pos;
     this.startPos = pos;
@@ -275,11 +317,14 @@ class FireRain extends Fireball {
 
 class Coin extends Actor {
   constructor(pos) {
+    // pos, speed, size должны задаваться через родительский конструктор
     super(pos);
+    // не опускайте фигурные скобки
     if (pos)
       this.pos = pos;
     this.size = new Vector(0.6, 0.6);
     this.pos = this.pos.plus(new Vector(0.2, 0.1));
+    // defineProperty?
     Object.defineProperty(this, 'type', {
       get: function () {
         return 'coin';
@@ -301,12 +346,14 @@ class Coin extends Actor {
 
   getNextPosition(time = 1) {
     this.spring += this.springSpeed * time;
+    // зачем переменная a?
     const a = this.startPos.plus(this.getSpringVector());
     return new Vector(a.x, a.y);
   }
 
   act(time) {
     const newPos = this.getNextPosition(time);
+    // мутация обхекта
     this.pos.x = newPos.x;
     this.pos.y = newPos.y;
   }
@@ -314,12 +361,15 @@ class Coin extends Actor {
 
 class Player extends Actor {
   constructor(pos) {
+    // pos, speed, size...
     super(pos);
+    // ?
     Object.defineProperty(this, 'type', {
       get: function () {
         return 'player';
       }
     });
+    // фигурные скоки
     if (pos)
       this.pos = pos;
     this.size = new Vector(0.8, 1.5);
